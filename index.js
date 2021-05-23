@@ -18,7 +18,6 @@ const speedTest = require('speedtest-net');
 
 const CHECK_POSITION_EVERY_N_MINUTE = 1;
 const KEEP_N_POSITIONS = 30;
-const SPEEDTEST_EVERY_N_HOURS = 6;
 const MAX_DISTANCE = 0.5;
 
 module.exports = function (app) {
@@ -26,6 +25,8 @@ module.exports = function (app) {
   var positions = [];
   var mainProcess;
   var lastSpeedTest;
+  var interval;
+  var website;
   var equipment;
 
   plugin.id = 'speedtest';
@@ -93,6 +94,7 @@ module.exports = function (app) {
 	let data = {
 	  name: app.getSelfPath('name'),
 	  mmsi: app.getSelfPath('mmsi'),
+	  website: website,
 	  equipment: equipment,
 	  position: position,
   	  results: await speedTest(options)
@@ -131,7 +133,13 @@ module.exports = function (app) {
       app.error('You need to accept the EULA, TOS, Privacy and GDPR policies.');
       return;
     }
+
+    // Keep interval within boundries
+    interval = Math.min(options.interval, 84);
+    interval = Math.max(interval, 8);
     equipment = options.equipment;
+    website = options.website;
+
     // Capture a position every minute
     mainProcess = setInterval( () => {
       let position = getKeyValue('navigation.position', 60);
@@ -145,12 +153,12 @@ module.exports = function (app) {
 	if (lastSpeedTest) {
 	  timeSinceLastSpeedTest = Date.now() - lastSpeedTest;
 	}
-	if ((!lastSpeedTest) || (timeSinceLastSpeedTest > SPEEDTEST_EVERY_N_HOURS * 60 * 60 * 1000)) {
+	if ((!lastSpeedTest) || (timeSinceLastSpeedTest > interval * 60 * 60 * 1000)) {
 	  // Reset positions
 	  positions = [];
 	  doSpeedTest(position);
 	} else {
-	  app.debug('Not doing a speedtest, need at least 6 hours between tests.');
+	  app.debug(`Not doing a speedtest, need at least ${interval} hours between tests.`);
 	}
       }
     }, CHECK_POSITION_EVERY_N_MINUTE*60*1000);
@@ -162,7 +170,7 @@ module.exports = function (app) {
 
   plugin.schema = {
     type: 'object',
-    required: ['uuid'],
+    required: ['eula','tos','privacy','gdpr'],
     properties: {
       eula: {
         type: 'boolean',
@@ -183,6 +191,15 @@ module.exports = function (app) {
         type: 'boolean',
         title: 'Accept GDPR terms (https://www.speedtest.net/gdpr-dpa)',
         default: false
+      },
+      interval: {
+        type: 'number',
+        title: 'Minimum time between speed tests (between 8-84 hours)',
+        default: 24
+      },
+      website: {
+        type: 'string',
+        title: 'Website (Optional)'
       },
       equipment: {
         type: 'string',
