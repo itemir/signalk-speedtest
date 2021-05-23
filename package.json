@@ -1,5 +1,5 @@
 {
-  "name": "speedtest",
+  "name": "signalk-speedtest",
   "version": "0.0.1",
   "description": "Automatically log Internet speeds from moorages",
   "main": "index.js",
