@@ -24,7 +24,8 @@ module.exports = function (app) {
   var plugin = {};
   var positions = [];
   var mainProcess;
-  var lastSpeedTest;
+  var lastSpeedTestDate;
+  var lastSpeedTestPosition;
   var interval;
   var website;
   var equipment;
@@ -68,14 +69,18 @@ module.exports = function (app) {
 
   function submitDataToServer(data) {
     let httpOptions = {
-      uri: 'https://connectedcastaways.com/signal//measurements/submit/',
+      uri: 'https://boatersatlas.com/measurements/submit/',
       method: 'POST',
       json: JSON.stringify(data)
     };
 
     request(httpOptions, function (error, response, body) {
       if (!error && response.statusCode == 200) {
-	lastSpeedTest = Date.now();
+	lastSpeedTestDate = Date.now();
+        let position = getKeyValue('navigation.position', 60);
+	if (position) {
+	  lastSpeedTestPosition = position;
+	}
         app.debug('Data successfully submitted');
       } else {
         app.debug('Submission failed');
@@ -149,16 +154,30 @@ module.exports = function (app) {
       let distance = calculateDistanceOfPath(positions);
       app.debug(`Total distance in last ${positions.length} minutes is ${distance} miles`);
       if ((positions.length >= KEEP_N_POSITIONS) && (distance <= MAX_DISTANCE)) {
-	let timeSinceSpeedTest=0;
-	if (lastSpeedTest) {
-	  timeSinceLastSpeedTest = Date.now() - lastSpeedTest;
+	let distanceFromLastSpeedTest = 0;
+        if (lastSpeedTestPosition) {
+	  distanceFromLastSpeedTest = calculateDistance(position.latitude,
+		                        position.longitude,
+		  			lastSpeedTestPosition.latitude,
+		  			lastSpeedTestPosition.longitude);
 	}
-	if ((!lastSpeedTest) || (timeSinceLastSpeedTest > interval * 60 * 60 * 1000)) {
+	let timeSinceSpeedTest=0;
+	if (lastSpeedTestDate) {
+	  timeSinceLastSpeedTest = Date.now() - lastSpeedTestDate;
+	}
+	if (
+	    ((options.testOnMove) && (distanceFromLastSpeedTest >= 1)) ||
+	    (!lastSpeedTestDate) || (timeSinceLastSpeedTest > interval * 60 * 60 * 1000)
+           ) {
 	  // Reset positions
 	  positions = [];
 	  doSpeedTest(position);
 	} else {
-	  app.debug(`Not doing a speedtest, need at least ${interval} hours between tests.`);
+	  app.debug(`Not doing a speedtest. ` +
+	            `Interval: ${interval} hours / ` +
+		    `Time passed: ${timeSinceLastSpeedTest / 60 / 60 / 1000} hours / ` +
+		    `Distance Moved ${distanceFromLastSpeedTest} miles`
+		    );
 	}
       }
     }, CHECK_POSITION_EVERY_N_MINUTE*60*1000);
@@ -196,6 +215,11 @@ module.exports = function (app) {
         type: 'number',
         title: 'Minimum time between speed tests (between 8-84 hours)',
         default: 24
+      },
+      testOnMove: {
+        type: 'boolean',
+        title: 'Do a speedtest when vessel moves more than 1 mile, even if minimum time has not passed',
+        default: true, 
       },
       website: {
         type: 'string',
