@@ -18,7 +18,7 @@ const speedTest = require('speedtest-net');
 
 const CHECK_POSITION_EVERY_N_MINUTE = 1;
 const KEEP_N_POSITIONS = 30;
-const MAX_DISTANCE = 0.5;
+const MAX_DISTANCE = 0.1;
 
 module.exports = function (app) {
   var plugin = {};
@@ -29,6 +29,7 @@ module.exports = function (app) {
   var interval;
   var website;
   var equipment;
+  var testOnMove;
 
   plugin.id = 'speedtest';
   plugin.name = 'Internet Speed Test';
@@ -144,6 +145,7 @@ module.exports = function (app) {
     interval = Math.max(interval, 8);
     equipment = options.equipment;
     website = options.website;
+    testOnMove = options.testOnMove;
 
     // Capture a position every minute
     mainProcess = setInterval( () => {
@@ -166,7 +168,7 @@ module.exports = function (app) {
 	  timeSinceLastSpeedTest = Date.now() - lastSpeedTestDate;
 	}
 	if (
-	    ((options.testOnMove) && (distanceFromLastSpeedTest >= 1)) ||
+	    ((testOnMove) && (distanceFromLastSpeedTest >= 1)) ||
 	    (!lastSpeedTestDate) || (timeSinceLastSpeedTest > interval * 60 * 60 * 1000)
            ) {
 	  // Reset positions
@@ -176,7 +178,8 @@ module.exports = function (app) {
 	  app.debug(`Not doing a speedtest. ` +
 	            `Interval: ${interval} hours / ` +
 		    `Time passed: ${timeSinceLastSpeedTest / 60 / 60 / 1000} hours / ` +
-		    `Distance Moved ${distanceFromLastSpeedTest} miles`
+		    `Distance Moved ${distanceFromLastSpeedTest} miles` +
+		    `Test on Move Enabled: ${testOnMove}`
 		    );
 	}
       }
@@ -189,7 +192,7 @@ module.exports = function (app) {
 
   plugin.schema = {
     type: 'object',
-    required: ['eula','tos','privacy','gdpr'],
+    required: ['eula','tos','privacy','gdpr','interval','testOnMove'],
     properties: {
       eula: {
         type: 'boolean',
