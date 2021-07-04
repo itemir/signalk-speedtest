@@ -212,16 +212,16 @@ module.exports = function (app) {
       gdpr: {
         type: 'boolean',
         title: 'Accept GDPR terms (https://www.speedtest.net/gdpr-dpa)',
-        default: false
+        default: false,
       },
       interval: {
         type: 'number',
         title: 'Minimum time between speed tests (between 8-84 hours)',
-        default: 24
+        default: 48,
       },
       testOnMove: {
         type: 'boolean',
-        title: 'Do a speedtest when vessel moves more than 1 mile, even if minimum time has not passed',
+        title: 'Do a speedtest when the vessel moves more than 1 mile, even if minimum time has not passed',
         default: true, 
       },
       website: {
